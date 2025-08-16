@@ -104,4 +104,4 @@ npx serve output
 
 ## 🎥 Demo
 
-[![Watch the video]](https://youtu.be/om7hPTGVbUE)
+[![Watch the video](https://youtu.be/om7hPTGVbUE)](https://youtu.be/om7hPTGVbUE)
