@@ -50,7 +50,6 @@ function askQuestion(query) {
 }
 function scrapeWebsite(url) {
     return __awaiter(this, void 0, void 0, function* () {
-        console.log("Cloning website:", url);
         const { scrapeWebsite } = yield Promise.resolve().then(() => __importStar(require("./scrapeWebsite")));
         return yield scrapeWebsite(url, {
             outDir: "./output",
@@ -229,7 +228,8 @@ function main() {
             },
             {
                 role: "user",
-                content: `In the current directory, read the changes via git and push the changes to github with good commit message`,
+                content: `Clone the website ${userPrompt} into a fully functional offline version. Rewrite all code, assets,
+       and links so it runs locally without internet access.`,
             },
         ];
         while (true) {

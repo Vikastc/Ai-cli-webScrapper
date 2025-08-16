@@ -16,7 +16,6 @@ function askQuestion(query: string): Promise<string> {
 }
 
 async function scrapeWebsite(url: string) {
-  console.log("Cloning website:", url);
   const { scrapeWebsite } = await import("./scrapeWebsite");
   return await scrapeWebsite(url, {
     outDir: "./output",
