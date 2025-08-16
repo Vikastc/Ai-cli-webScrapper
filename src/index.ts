@@ -196,7 +196,8 @@ async function main() {
     },
     {
       role: "user",
-      content: `In the current directory, read the changes via git and push the changes to github with good commit message`,
+      content: `Clone the website ${userPrompt} into a fully functional offline version. Rewrite all code, assets,
+       and links so it runs locally without internet access.`,
     },
   ];
 
