@@ -101,3 +101,7 @@ npx serve output
 ---
 
 ✅ That’s it! Just run `pnpm dev`, enter a website URL, and get a fully offline clone 🚀
+
+## 🎥 Demo
+
+[![Watch the video]](https://youtu.be/om7hPTGVbUE)
