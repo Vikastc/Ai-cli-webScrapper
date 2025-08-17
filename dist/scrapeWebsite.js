@@ -39,29 +39,28 @@ exports.scrapeWebsite = scrapeWebsite;
 const cheerio = __importStar(require("cheerio"));
 const fs_extra_1 = __importDefault(require("fs-extra"));
 const path_1 = __importDefault(require("path"));
+const crypto_1 = __importDefault(require("crypto"));
 const p_limit_1 = __importDefault(require("p-limit"));
 function scrapeWebsite(startUrl_1) {
     return __awaiter(this, arguments, void 0, function* (startUrl, opts = {}) {
         var _a, _b, _c, _d;
         const root = new URL(startUrl);
         const rootOrigin = root.origin;
-        const outputDir = path_1.default.join(process.cwd(), (_a = opts.outDir) !== null && _a !== void 0 ? _a : "cloned-site");
+        const outputDir = path_1.default.join(process.cwd(), (_a = opts.outDir) !== null && _a !== void 0 ? _a : "output");
         const maxPages = (_b = opts.maxPages) !== null && _b !== void 0 ? _b : 100;
         const mirrorExternalAssets = (_c = opts.mirrorExternalAssets) !== null && _c !== void 0 ? _c : true;
         const concurrency = (_d = opts.concurrency) !== null && _d !== void 0 ? _d : 10;
         const limit = (0, p_limit_1.default)(concurrency);
-        // normalize paths for saving
+        // always flatten into assets/
         const toLocalAssetPath = (u) => {
-            let finalPath = u.pathname;
-            // safe filename for query strings
-            if (u.search) {
-                const safeQuery = u.search.replace(/[?&=]/g, "_").slice(0, 100); // limit length
-                finalPath = `${u.pathname}${safeQuery}`;
-            }
-            if (u.origin === rootOrigin) {
-                return finalPath.replace(/^\/+/, "");
-            }
-            return `external/${u.hostname}${finalPath}`.replace(/^\/+/, "");
+            const urlPath = u.pathname.split("/").filter(Boolean).join("_");
+            const base = path_1.default.basename(urlPath || "asset");
+            const hash = crypto_1.default
+                .createHash("md5")
+                .update(u.href)
+                .digest("hex")
+                .slice(0, 6);
+            return `assets/${hash}-${base}`;
         };
         const urlToPageFilePath = (u) => {
             let p = u.pathname;
@@ -80,7 +79,6 @@ function scrapeWebsite(startUrl_1) {
         const pageQueue = [root.href];
         const assetSet = new Set();
         yield fs_extra_1.default.emptyDir(outputDir);
-        // ---- Crawl pages ----
         while (pageQueue.length && visitedPages.size < maxPages) {
             const current = pageQueue.shift();
             if (visitedPages.has(current))
@@ -101,14 +99,13 @@ function scrapeWebsite(startUrl_1) {
             }
             const html = yield res.text();
             const $ = cheerio.load(html);
-            // ---- Handle Images (fix Next.js /_next/image etc) ----
+            // ---- Fix <img> ----
             $("img").each((_, el) => {
                 const $el = $(el);
                 ["src", "data-src"].forEach((attr) => {
                     const val = $el.attr(attr);
                     if (!val)
                         return;
-                    // Fix Next.js proxy
                     if (val.includes("/_next/image") && val.includes("url=")) {
                         try {
                             const realUrl = decodeURIComponent(val.split("url=")[1].split("&")[0]);
@@ -127,7 +124,6 @@ function scrapeWebsite(startUrl_1) {
                         assetSet.add(abs.href);
                     }
                 });
-                // fix srcset
                 const srcset = $el.attr("srcset");
                 if (srcset) {
                     const parts = srcset.split(",").map((entry) => {
@@ -146,7 +142,6 @@ function scrapeWebsite(startUrl_1) {
                     });
                     $el.attr("srcset", parts.join(", "));
                 }
-                // cleanup
                 $el.removeAttr("data-src data-nimg decoding loading");
             });
             // ---- CSS + JS ----
@@ -168,7 +163,7 @@ function scrapeWebsite(startUrl_1) {
                 $el.attr("src", toLocalAssetPath(abs));
                 assetSet.add(abs.href);
             });
-            // ---- Internal links ----
+            // ---- Links ----
             $("a[href]").each((_, el) => {
                 const $el = $(el);
                 const href = $el.attr("href");
@@ -187,13 +182,12 @@ function scrapeWebsite(startUrl_1) {
                     }
                 }
             });
-            // ---- Save rewritten HTML ----
             const filePath = urlToPageFilePath(new URL(current));
             yield fs_extra_1.default.ensureDir(path_1.default.dirname(filePath));
             yield fs_extra_1.default.writeFile(filePath, $.html(), "utf8");
             console.log(`✅ Saved page: ${filePath}`);
         }
-        // ---- Download assets concurrently ----
+        // ---- Download assets ----
         yield Promise.all([...assetSet].map((assetUrl) => limit(() => __awaiter(this, void 0, void 0, function* () {
             try {
                 const u = new URL(assetUrl);

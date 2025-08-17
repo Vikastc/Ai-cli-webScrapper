@@ -53,7 +53,6 @@ function scrapeWebsite(url) {
         const { scrapeWebsite } = yield Promise.resolve().then(() => __importStar(require("./scrapeWebsite")));
         return yield scrapeWebsite(url, {
             outDir: "./output",
-            mirrorExternalAssets: true,
             // maxPages: 50,
         });
     });
@@ -201,24 +200,14 @@ function main() {
   Example_3:
     User: Given a website "https://www.piyushgarg.dev" Can you clone the entire site (HTML, CSS, JS) locally using plain HTML/CSS/JS ?
     ASSISTANT: { "step": "START", "content": "The user wants to clone the entire website 'https://www.piyushgarg.dev' locally" }
-    ASSISTANT: { "step": "THINK", "content": "Let me see if there is any available tool for this query" }
-    ASSISTANT: { "step": "THINK", "content": "I see that there is a tool available scrapeWebsite() which can be used to clone the website" }
-    ASSISTANT: { "step": "THINK", "content": "I need to call scrapeWebsite() for url https://www.piyushgarg.dev to clone the website" }
-    ASSISTANT: { "step": "TOOL", "input": "https://www.piyushgarg.dev", "tool_name": "scrapeWebsite" }
-    ASSISTANT: { "step": "THINK", "content": " Download and save the entire site locally, including HTML, CSS, JavaScript, images, and fonts." }
+    ASSISTANT: {"step": "THINK", "content": "Check if the website is available online, if yes continue if not return an error message" }
     ASSISTANT: { "step": "THINK", "content": "Rewrite all external links and code so the site runs completely offline without dependencies on external CDNs or APIs." }
-    ASSISTANT: { "step": "THINK", "content": "Clone the website into a fully functional offline version using plain HTML/CSS/JS with responsive layout, closely matching the original design, and organize assets in a clean directory structure (/css, /js, /images, etc.)."}
-    DEVELOPER: { "step": "OBSERVE", "content": "If you face any errors, try checking the console for more information. And retry the operation."}
-    DEVELOPER: { "step": "OBSERVE", "content": "The website https://www.piyushgarg.dev has been cloned successfully" }
-    ASSISTANT: { "step": "THINK", "content": "Double check if the website is cloned correctly" }
-    ASSISTANT: { "step": "THINK", "content": "Check if all the images are loaded correctly, if not try re-downloading them and fixing the paths." }
-    ASSISTANT: { "step": "THINK", "content": "Add the website in a new folder 'cloned-sites'" }
-    ASSISTANT: { "step": "THINK", "content": "Double check if the website is accessible locally" }
-    ASSISTANT: { "step": "OUTPUT", "content": "Check if all the pages are accessible and images are loading correctly. Scrape all sub pages as well." }
-    ASSISTANT: { "step": "THINK", "content": "Test the website in the browser" }
-    ASSISTANT: { "step": "THINK", "content": "Check the console for any errors" }
-    ASSISTANT: { "step": "THINK", "content": "Fix any errors that come up" }
-    ASSISTANT: { "step": "THINK", "content": "Give the user the command to run the app locally" }
+    ASSISTANT: { "step": "THINK", "content": "The task is to clone the website into a fully functional offline version using plain HTML/CSS/JS with responsive layout, closely matching the original design, and organize assets in a clean directory structure (/css, /js, /images, etc.)."}
+    ASSISTANT: { "step": "THINK", "content": "Let me see if there are any available tool for this query" }
+    ASSISTANT: { "step": "THINK", "content": "I see that there is a tool available scrapeWebsite which can be used to clone the website" }
+    ASSISTANT: { "step": "THINK", "content": "I need to call scrapeWebsite for url https://www.piyushgarg.dev to clone the website" }
+    ASSISTANT: { "step": "TOOL", "input": "https://www.piyushgarg.dev", "tool_name": "scrapeWebsite" }
+    DEVELOPER: { "step": "OBSERVE", "content": "The website 'https://www.piyushgarg.dev' has been cloned successfully" }
     ASSISTANT: { "step": "OUTPUT", "content": "The website 'https://www.piyushgarg.dev' has been cloned successfully and is available locally." }
   `;
         const messages = [

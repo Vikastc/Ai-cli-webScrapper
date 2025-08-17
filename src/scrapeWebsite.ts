@@ -1,39 +1,36 @@
 import * as cheerio from "cheerio";
 import fs from "fs-extra";
 import path from "path";
+import crypto from "crypto";
 import pLimit from "p-limit";
 
 type CrawlOptions = {
   outDir?: string;
-  maxPages?: number; // safety cap set to 100 by default
-  mirrorExternalAssets?: boolean; // download cross-origin assets
-  concurrency?: number; // parallel downloads
+  maxPages?: number;
+  mirrorExternalAssets?: boolean;
+  concurrency?: number;
 };
 
 export async function scrapeWebsite(startUrl: string, opts: CrawlOptions = {}) {
   const root = new URL(startUrl);
   const rootOrigin = root.origin;
-  const outputDir = path.join(process.cwd(), opts.outDir ?? "cloned-site");
+  const outputDir = path.join(process.cwd(), opts.outDir ?? "output");
   const maxPages = opts.maxPages ?? 100;
   const mirrorExternalAssets = opts.mirrorExternalAssets ?? true;
   const concurrency = opts.concurrency ?? 10;
 
   const limit = pLimit(concurrency);
 
-  // normalize paths for saving
+  // always flatten into assets/
   const toLocalAssetPath = (u: URL) => {
-    let finalPath = u.pathname;
-
-    // safe filename for query strings
-    if (u.search) {
-      const safeQuery = u.search.replace(/[?&=]/g, "_").slice(0, 100); // limit length
-      finalPath = `${u.pathname}${safeQuery}`;
-    }
-
-    if (u.origin === rootOrigin) {
-      return finalPath.replace(/^\/+/, "");
-    }
-    return `external/${u.hostname}${finalPath}`.replace(/^\/+/, "");
+    const urlPath = u.pathname.split("/").filter(Boolean).join("_");
+    const base = path.basename(urlPath || "asset");
+    const hash = crypto
+      .createHash("md5")
+      .update(u.href)
+      .digest("hex")
+      .slice(0, 6);
+    return `assets/${hash}-${base}`;
   };
 
   const urlToPageFilePath = (u: URL) => {
@@ -56,7 +53,6 @@ export async function scrapeWebsite(startUrl: string, opts: CrawlOptions = {}) {
 
   await fs.emptyDir(outputDir);
 
-  // ---- Crawl pages ----
   while (pageQueue.length && visitedPages.size < maxPages) {
     const current = pageQueue.shift()!;
     if (visitedPages.has(current)) continue;
@@ -79,15 +75,13 @@ export async function scrapeWebsite(startUrl: string, opts: CrawlOptions = {}) {
     const html = await res.text();
     const $ = cheerio.load(html);
 
-    // ---- Handle Images (fix Next.js /_next/image etc) ----
+    // ---- Fix <img> ----
     $("img").each((_, el) => {
       const $el = $(el);
-
       ["src", "data-src"].forEach((attr) => {
         const val = $el.attr(attr);
         if (!val) return;
 
-        // Fix Next.js proxy
         if (val.includes("/_next/image") && val.includes("url=")) {
           try {
             const realUrl = decodeURIComponent(
@@ -107,7 +101,6 @@ export async function scrapeWebsite(startUrl: string, opts: CrawlOptions = {}) {
         }
       });
 
-      // fix srcset
       const srcset = $el.attr("srcset");
       if (srcset) {
         const parts = srcset.split(",").map((entry) => {
@@ -125,7 +118,6 @@ export async function scrapeWebsite(startUrl: string, opts: CrawlOptions = {}) {
         $el.attr("srcset", parts.join(", "));
       }
 
-      // cleanup
       $el.removeAttr("data-src data-nimg decoding loading");
     });
 
@@ -148,14 +140,13 @@ export async function scrapeWebsite(startUrl: string, opts: CrawlOptions = {}) {
       assetSet.add(abs.href);
     });
 
-    // ---- Internal links ----
+    // ---- Links ----
     $("a[href]").each((_, el) => {
       const $el = $(el);
       const href = $el.attr("href")!;
       if (shouldSkipHref(href)) return;
 
       const abs = new URL(href, current);
-
       if (abs.origin === rootOrigin) {
         abs.search = "";
         abs.hash = "";
@@ -168,14 +159,13 @@ export async function scrapeWebsite(startUrl: string, opts: CrawlOptions = {}) {
       }
     });
 
-    // ---- Save rewritten HTML ----
     const filePath = urlToPageFilePath(new URL(current));
     await fs.ensureDir(path.dirname(filePath));
     await fs.writeFile(filePath, $.html(), "utf8");
     console.log(`✅ Saved page: ${filePath}`);
   }
 
-  // ---- Download assets concurrently ----
+  // ---- Download assets ----
   await Promise.all(
     [...assetSet].map((assetUrl) =>
       limit(async () => {
